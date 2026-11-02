@@ -1,0 +1,6 @@
+{
+  "name": "EVA-01 Mecha Visualizer // 에반게리온 3D",
+  "description": "Interactive Evangelion-style biomechanical mecha visualizer in Three.js featuring NERV UI, Berserk mode, AT Field simulation, progressive cage launch, and weaponry.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

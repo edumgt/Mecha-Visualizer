@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #000000;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+code, kbd, samp, pre {
+  font-family: 'Share Tech Mono', 'Chakra Petch', monospace;
+}
