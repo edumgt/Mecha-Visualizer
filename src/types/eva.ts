@@ -1,5 +1,7 @@
 export type EvaUnitId = 'unit-01' | 'unit-02' | 'unit-00' | 'berserk' | 'space-01';
 
+export type DisplayMode = 'car' | 'mecha';
+
 export type EvaPose = 
   | 'stand' 
   | 'combat' 

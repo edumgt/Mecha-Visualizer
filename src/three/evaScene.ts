@@ -6,9 +6,10 @@ import { EvaModel } from './evaModel';
 import { EvaEnvironmentManager } from './evaHangar';
 import { EvaLaserScanner } from './evaLaserScanner';
 import { EvaTacticalGrid } from './evaTacticalGrid';
-import { EnvironmentType, EvaPose, EvaUnitId, EvaWeapon } from '../types/eva';
+import { SportsCarModel } from './sportsCarModel';
+import { DisplayMode, EnvironmentType, EvaPose, EvaUnitId, EvaWeapon } from '../types/eva';
 
-export type CameraPreset = 'full' | 'head' | 'core' | 'hands' | 'spine' | 'combat' | 'side';
+export type CameraPreset = 'full' | 'head' | 'core' | 'hands' | 'spine' | 'combat' | 'side' | 'carFront' | 'carCockpit' | 'carRear' | 'carWheel';
 
 export class EvaSceneController {
   private container: HTMLDivElement;
@@ -19,6 +20,8 @@ export class EvaSceneController {
 
   private materials: EvaMaterialManager;
   public model: EvaModel;
+  public sportsCar: SportsCarModel;
+  public displayMode: DisplayMode = 'car';
   private envManager: EvaEnvironmentManager;
   public laserScanner: EvaLaserScanner;
   public tacticalGrid: EvaTacticalGrid;
@@ -130,10 +133,16 @@ export class EvaSceneController {
     this.rimLight.position.set(-6, 8, -8);
     this.scene.add(this.rimLight);
 
-    // 7. Initialize Materials, Model, Environment
+    // 7. Initialize Materials, Models, Environment
     this.materials = new EvaMaterialManager(initialUnit);
     this.model = new EvaModel(this.materials);
+    this.sportsCar = new SportsCarModel(this.materials, initialUnit);
+
     this.scene.add(this.model.group);
+    this.scene.add(this.sportsCar.group);
+
+    // Default to sports car as requested
+    this.setDisplayMode('car');
 
     this.envManager = new EvaEnvironmentManager();
     this.envManager.setup(this.scene, 'hangar');
@@ -214,17 +223,36 @@ export class EvaSceneController {
       this.controls.update();
 
       // Update model kinematics & animations
-      this.model.update(delta, elapsed);
+      if (this.displayMode === 'mecha') {
+        this.model.update(delta, elapsed);
+      } else {
+        this.sportsCar.update(delta, elapsed, this.currentSyncRate);
+      }
 
       // Update additive 3D scanline laser sweep
       this.laserScanner.update(delta, elapsed);
 
       // Update procedural glowing tactical floor grid
-      if (this.model && this.model.bones) {
+      const isBerserk = this.currentUnit === 'berserk';
+      if (this.displayMode === 'mecha' && this.model && this.model.bones) {
         this.model.bones.leftFoot.getWorldPosition(this.tempLeftFoot);
         this.model.bones.rightFoot.getWorldPosition(this.tempRightFoot);
         this.model.bones.root.getWorldPosition(this.tempRootPos);
-        const isBerserk = this.currentUnit === 'berserk';
+        this.tacticalGrid.update(
+          delta,
+          elapsed,
+          this.currentSyncRate,
+          this.tempLeftFoot,
+          this.tempRightFoot,
+          this.tempRootPos,
+          isBerserk,
+          this.currentEnv
+        );
+      } else if (this.displayMode === 'car') {
+        // Track front/rear axle positions on floor grid
+        this.tempLeftFoot.set(-1.0, 0, 1.45);
+        this.tempRightFoot.set(1.0, 0, 1.45);
+        this.tempRootPos.set(0, 0, 0);
         this.tacticalGrid.update(
           delta,
           elapsed,
@@ -256,6 +284,7 @@ export class EvaSceneController {
   public setUnit(unit: EvaUnitId) {
     this.currentUnit = unit;
     this.materials.updatePalette(unit);
+    this.sportsCar.updatePalette(unit);
     this.laserScanner.setUnit(unit);
     const isBerserk = unit === 'berserk';
     this.model.setBerserkMode(isBerserk);
@@ -280,6 +309,32 @@ export class EvaSceneController {
     }
   }
 
+  public setDisplayMode(mode: DisplayMode) {
+    this.displayMode = mode;
+    if (mode === 'car') {
+      this.model.group.visible = false;
+      this.sportsCar.group.visible = true;
+      // Adjust camera comfortably to sportscar viewpoint
+      this.setCameraPreset('carFront');
+    } else {
+      this.model.group.visible = true;
+      this.sportsCar.group.visible = false;
+      this.setCameraPreset('full');
+    }
+  }
+
+  public setCarDoors(open: boolean | number) {
+    this.sportsCar.setDoorOpen(open);
+  }
+
+  public setCarSteering(angle: number) {
+    this.sportsCar.setSteeringAngle(angle);
+  }
+
+  public setCarNitro(active: boolean) {
+    this.sportsCar.setNitroActive(active);
+  }
+
   public setPose(pose: EvaPose) {
     this.model.setPose(pose);
   }
@@ -298,6 +353,10 @@ export class EvaSceneController {
 
   public setExplodedView(factor: number) {
     this.model.setExplodedView(factor);
+    if (this.displayMode === 'car') {
+      // For car, open scissor doors dynamically
+      this.sportsCar.setDoorOpen(factor);
+    }
   }
 
   public setAtField(active: boolean) {
@@ -312,8 +371,29 @@ export class EvaSceneController {
     this.isTransitioningCamera = true;
     switch (preset) {
       case 'full':
-        this.targetCamPos.set(0, 5.5, 14);
-        this.targetTargetPos.set(0, 5.0, 0);
+        if (this.displayMode === 'car') {
+          this.targetCamPos.set(4.8, 2.2, 5.8);
+          this.targetTargetPos.set(0, 0.65, 0);
+        } else {
+          this.targetCamPos.set(0, 5.5, 14);
+          this.targetTargetPos.set(0, 5.0, 0);
+        }
+        break;
+      case 'carFront':
+        this.targetCamPos.set(2.8, 1.4, 4.4);
+        this.targetTargetPos.set(0, 0.55, 0.5);
+        break;
+      case 'carCockpit':
+        this.targetCamPos.set(-0.35, 1.15, 0.0);
+        this.targetTargetPos.set(-0.35, 0.75, 1.2);
+        break;
+      case 'carRear':
+        this.targetCamPos.set(-3.2, 1.6, -4.6);
+        this.targetTargetPos.set(0, 0.6, -0.5);
+        break;
+      case 'carWheel':
+        this.targetCamPos.set(2.2, 0.65, 1.8);
+        this.targetTargetPos.set(0.98, 0.38, 1.45);
         break;
       case 'head':
         this.targetCamPos.set(0, 7.8, 3.2);
@@ -336,8 +416,13 @@ export class EvaSceneController {
         this.targetTargetPos.set(0, 4.8, 0);
         break;
       case 'side':
-        this.targetCamPos.set(11, 5.5, 0);
-        this.targetTargetPos.set(0, 5.0, 0);
+        if (this.displayMode === 'car') {
+          this.targetCamPos.set(5.5, 1.2, 0);
+          this.targetTargetPos.set(0, 0.55, 0);
+        } else {
+          this.targetCamPos.set(11, 5.5, 0);
+          this.targetTargetPos.set(0, 5.0, 0);
+        }
         break;
     }
   }
@@ -371,6 +456,7 @@ export class EvaSceneController {
     this.controls.dispose();
     this.laserScanner.dispose();
     this.tacticalGrid.dispose();
+    this.sportsCar.dispose();
     this.materials.dispose();
     this.renderer.dispose();
     if (this.renderer.domElement.parentElement) {

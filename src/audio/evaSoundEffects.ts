@@ -615,6 +615,124 @@ class EvaAudioEngine {
       pingOsc.stop(t + 0.65);
     }
   }
+
+  /**
+   * Sports Car V10/V12 High-RPM Throttle Rev
+   */
+  public playEngineRev() {
+    if (this.isMuted) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    // Harmonic oscillators simulating multi-cylinder exhaust roar
+    const osc1 = this.ctx.createOscillator();
+    const osc2 = this.ctx.createOscillator();
+    const subOsc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const filter = this.ctx.createBiquadFilter();
+
+    osc1.type = 'sawtooth';
+    osc1.frequency.setValueAtTime(95, t);
+    osc1.frequency.exponentialRampToValueAtTime(420, t + 0.45);
+    osc1.frequency.exponentialRampToValueAtTime(120, t + 1.2);
+
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(140, t);
+    osc2.frequency.exponentialRampToValueAtTime(630, t + 0.45);
+    osc2.frequency.exponentialRampToValueAtTime(160, t + 1.2);
+
+    subOsc.type = 'sawtooth';
+    subOsc.frequency.setValueAtTime(48, t);
+    subOsc.frequency.exponentialRampToValueAtTime(210, t + 0.45);
+    subOsc.frequency.exponentialRampToValueAtTime(60, t + 1.2);
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(450, t);
+    filter.frequency.exponentialRampToValueAtTime(3200, t + 0.45);
+    filter.frequency.exponentialRampToValueAtTime(500, t + 1.2);
+
+    gain.gain.setValueAtTime(0.01, t);
+    gain.gain.linearRampToValueAtTime(0.25, t + 0.15);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 1.25);
+
+    osc1.connect(filter);
+    osc2.connect(filter);
+    subOsc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc1.start(t);
+    osc2.start(t);
+    subOsc.start(t);
+    osc1.stop(t + 1.3);
+    osc2.stop(t + 1.3);
+    subOsc.stop(t + 1.3);
+  }
+
+  /**
+   * Twin-Turbo Blow-Off Valve (BOV) Flutter & Whistle
+   */
+  public playTurboBlowOff() {
+    if (this.isMuted) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const bufferSize = this.ctx.sampleRate * 0.4;
+    const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(3800, t);
+    filter.frequency.exponentialRampToValueAtTime(1400, t + 0.35);
+    filter.Q.setValueAtTime(8.0, t);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.01, t);
+    gain.gain.linearRampToValueAtTime(0.2, t + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    noise.start(t);
+    noise.stop(t + 0.4);
+  }
+
+  /**
+   * Scissor Door / Dihedral Actuator Hiss & Clunk
+   */
+  public playDoorScissor() {
+    if (this.isMuted) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(220, t);
+    osc.frequency.exponentialRampToValueAtTime(450, t + 0.25);
+
+    gain.gain.setValueAtTime(0.01, t);
+    gain.gain.linearRampToValueAtTime(0.09, t + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc.start(t);
+    osc.stop(t + 0.36);
+  }
 }
 
 export const evaAudio = new EvaAudioEngine();

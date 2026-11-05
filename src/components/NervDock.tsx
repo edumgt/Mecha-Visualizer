@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
-import { EvaPose, EvaUnitId, EvaWeapon, EnvironmentType } from '../types/eva';
-import { ChevronDown, ChevronUp, Shield, Zap, Crosshair, Wrench, Globe, Flame, Radio, Scan, Video, Grid, Activity } from 'lucide-react';
+import { DisplayMode, EvaPose, EvaUnitId, EvaWeapon, EnvironmentType } from '../types/eva';
+import { ChevronDown, ChevronUp, Shield, Zap, Crosshair, Wrench, Globe, Flame, Radio, Scan, Video, Grid, Activity, Car, Gauge, Wind } from 'lucide-react';
 import { evaAudio } from '../audio/evaSoundEffects';
 
 interface NervDockProps {
   currentUnit: EvaUnitId;
   onSelectUnit: (unit: EvaUnitId) => void;
+  displayMode: DisplayMode;
+  onToggleDisplayMode: () => void;
+  carDoorsOpen: boolean;
+  onToggleCarDoors: () => void;
+  onCarRevEngine: () => void;
+  carNitroActive: boolean;
+  onToggleCarNitro: () => void;
   currentPose: EvaPose;
   onSelectPose: (pose: EvaPose) => void;
   currentWeapon: EvaWeapon;
@@ -35,6 +42,13 @@ type TabType = 'units' | 'poses' | 'weapons' | 'tactical' | 'stages';
 export const NervDock: React.FC<NervDockProps> = ({
   currentUnit,
   onSelectUnit,
+  displayMode,
+  onToggleDisplayMode,
+  carDoorsOpen,
+  onToggleCarDoors,
+  onCarRevEngine,
+  carNitroActive,
+  onToggleCarNitro,
   currentPose,
   onSelectPose,
   currentWeapon,
@@ -59,7 +73,7 @@ export const NervDock: React.FC<NervDockProps> = ({
   onToggleVideoRef,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('poses');
+  const [activeTab, setActiveTab] = useState<TabType>('tactical');
 
   const handleUnitClick = (unit: EvaUnitId) => {
     if (unit === 'berserk') {
@@ -122,11 +136,11 @@ export const NervDock: React.FC<NervDockProps> = ({
         {/* Navigation Category Tabs */}
         <div className="flex items-center space-x-1 border-b border-[#1c2433] pb-2 mb-2.5 overflow-x-auto no-scrollbar">
           {[
-            { id: 'poses', label: '포즈 지정', icon: Crosshair },
-            { id: 'units', label: '기체 모델', icon: Flame },
-            { id: 'weapons', label: '무장 장착', icon: Shield },
-            { id: 'tactical', label: '특수 작전', icon: Wrench },
-            { id: 'stages', label: '전장 환경', icon: Globe },
+            { id: 'tactical', label: displayMode === 'car' ? '차량 제어/사운드' : '특수 작전', icon: Wrench },
+            { id: 'units', label: displayMode === 'car' ? '외장 컬러/리버리' : '기체 모델', icon: Flame },
+            { id: 'poses', label: displayMode === 'car' ? '로봇 포즈' : '포즈 지정', icon: Crosshair },
+            { id: 'weapons', label: displayMode === 'car' ? '무장(로봇용)' : '무장 장착', icon: Shield },
+            { id: 'stages', label: '쇼룸/스테이지', icon: Globe },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -199,15 +213,40 @@ export const NervDock: React.FC<NervDockProps> = ({
             </div>
           )}
 
-          {/* TAB 2: UNITS */}
+          {/* TAB 2: UNITS / LIVERIES */}
           {activeTab === 'units' && (
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 w-full">
               {[
-                { id: 'space-01', name: 'EVA-01 우주 결전', pilot: '영상 레퍼런스 사양', color: 'border-[#06b6d4] text-[#38bdf8]' },
-                { id: 'unit-01', name: 'EVA-01 초호기', pilot: '이카리 신지', color: 'border-[#7928ca] text-[#a78bfa]' },
-                { id: 'unit-02', name: 'EVA-02 2호기', pilot: '소류 아스카', color: 'border-[#dc2626] text-[#f87171]' },
-                { id: 'unit-00', name: 'EVA-00 0호기', pilot: '아야나미 레이', color: 'border-[#2563eb] text-[#60a5fa]' },
-                { id: 'berserk', name: 'EVA-01 폭주/각성', pilot: '신화 형태', color: 'border-[#e11d48] text-[#fb7185]' },
+                {
+                  id: 'unit-01',
+                  name: displayMode === 'car' ? '초호기 바이올렛 V12' : 'EVA-01 초호기',
+                  sub: displayMode === 'car' ? '이리스 퍼플 / 네온라임' : '이카리 신지',
+                  color: 'border-[#7928ca] text-[#a78bfa]',
+                },
+                {
+                  id: 'unit-02',
+                  name: displayMode === 'car' ? '2호기 로쏘 코르사' : 'EVA-02 2호기',
+                  sub: displayMode === 'car' ? '스쿠데리아 레드 / 골드휠' : '소류 아스카',
+                  color: 'border-[#dc2626] text-[#f87171]',
+                },
+                {
+                  id: 'unit-00',
+                  name: displayMode === 'car' ? '0호기 알핀 블루' : 'EVA-00 0호기',
+                  sub: displayMode === 'car' ? '코발트 펄 / 실버크롬' : '아야나미 레이',
+                  color: 'border-[#2563eb] text-[#60a5fa]',
+                },
+                {
+                  id: 'berserk',
+                  name: displayMode === 'car' ? '폭주 흑요석 비스트' : 'EVA-01 각성 폭주',
+                  sub: displayMode === 'car' ? '사틴 옵시디언 / 블러드 레드' : '신화 각성 형태',
+                  color: 'border-[#e11d48] text-[#fb7185]',
+                },
+                {
+                  id: 'space-01',
+                  name: displayMode === 'car' ? '우주 결전 하이퍼카' : 'EVA-01 우주 결전',
+                  sub: displayMode === 'car' ? '이리디센트 퍼플 / 시안' : '영상 레퍼런스 사양',
+                  color: 'border-[#06b6d4] text-[#38bdf8]',
+                },
               ].map((u) => {
                 const isSelected = currentUnit === u.id;
                 return (
@@ -216,12 +255,12 @@ export const NervDock: React.FC<NervDockProps> = ({
                     onClick={() => handleUnitClick(u.id as EvaUnitId)}
                     className={`flex flex-col items-start px-3 py-1.5 rounded border transition-colors ${
                       isSelected
-                        ? 'bg-[#182335] ' + u.color + ' font-bold'
+                        ? 'bg-[#182335] ' + u.color + ' font-bold ring-1 ring-white/20'
                         : 'bg-[#121622] border-[#222b3b] text-[#94a3b8] hover:text-white hover:bg-[#182030]'
                     }`}
                   >
                     <span className="font-mono text-[11px] font-bold">{u.name}</span>
-                    <span className="text-[10px] text-[#64748b]">{u.pilot}</span>
+                    <span className="text-[10px] text-[#64748b]">{u.sub}</span>
                   </button>
                 );
               })}
@@ -259,6 +298,56 @@ export const NervDock: React.FC<NervDockProps> = ({
           {/* TAB 4: TACTICAL OPERATIONS */}
           {activeTab === 'tactical' && (
             <div className="flex flex-wrap items-center justify-between gap-3 w-full">
+              {/* CAR SPECIFIC SPECIAL CONTROLS */}
+              {displayMode === 'car' && (
+                <>
+                  {/* Scissor Doors Open/Close */}
+                  <button
+                    onClick={() => {
+                      evaAudio.playDoorScissor();
+                      onToggleCarDoors();
+                    }}
+                    className={`flex items-center space-x-2 px-3 py-2 rounded border font-mono text-[11px] transition-colors ${
+                      carDoorsOpen
+                        ? 'bg-[#00ff66]/20 border-[#00ff66] text-[#00ff66] font-bold'
+                        : 'bg-[#121622] border-[#242e40] text-[#8898aa] hover:text-white hover:bg-[#182030]'
+                    }`}
+                    title="단축키 [O]: 버터플라이 시저 도어 개폐"
+                  >
+                    <Car className="w-3.5 h-3.5 text-[#00ff66]" />
+                    <span>시저 도어 {carDoorsOpen ? '개방 [열림]' : '폐쇄 [닫힘]'}</span>
+                  </button>
+
+                  {/* V12 Engine Rev / Throttle Blip */}
+                  <button
+                    onClick={() => {
+                      onCarRevEngine();
+                    }}
+                    className="flex items-center space-x-2 px-3 py-2 rounded border border-[#f59e0b] bg-[#f59e0b]/20 text-[#fcd34d] hover:bg-[#f59e0b]/30 font-mono text-[11px] transition-colors"
+                    title="단축키 [E]: V12 트윈터보 고회전 배기음 가속 및 휠 회전"
+                  >
+                    <Gauge className="w-3.5 h-3.5 text-[#f59e0b]" />
+                    <span>V12 트윈터보 레브업 [E]</span>
+                  </button>
+
+                  {/* Nitro / Twin-Turbo Blow-Off Valve */}
+                  <button
+                    onClick={() => {
+                      onToggleCarNitro();
+                    }}
+                    className={`flex items-center space-x-2 px-3 py-2 rounded border font-mono text-[11px] transition-colors ${
+                      carNitroActive
+                        ? 'bg-[#00f0ff]/25 border-[#00f0ff] text-[#38bdf8] font-bold ring-1 ring-[#00f0ff]'
+                        : 'bg-[#121622] border-[#242e40] text-[#8898aa] hover:text-white hover:bg-[#182030]'
+                    }`}
+                    title="단축키 [N]: 니트로 부스터 배기 불꽃 및 블로우오프 밸브 사운드"
+                  >
+                    <Wind className="w-3.5 h-3.5 text-[#00f0ff]" />
+                    <span>니트로 부스터 {carNitroActive ? '[ACTIVE]' : '[OFF]'}</span>
+                  </button>
+                </>
+              )}
+
               {/* AT Field Toggle */}
               <button
                 onClick={() => {

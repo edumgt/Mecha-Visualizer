@@ -5,7 +5,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { EvaSceneController, CameraPreset } from './three/evaScene';
-import { EnvironmentType, EvaPose, EvaUnitId, EvaWeapon } from './types/eva';
+import { DisplayMode, EnvironmentType, EvaPose, EvaUnitId, EvaWeapon } from './types/eva';
 import { NervHeader } from './components/NervHeader';
 import { NervDock } from './components/NervDock';
 import { NervTelemetry } from './components/NervTelemetry';
@@ -19,10 +19,13 @@ export default function App() {
 
   // States
   const [currentUnit, setCurrentUnit] = useState<EvaUnitId>('unit-01');
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('car');
+  const [carDoorsOpen, setCarDoorsOpen] = useState<boolean>(false);
+  const [carNitroActive, setCarNitroActive] = useState<boolean>(false);
   const [currentPose, setCurrentPose] = useState<EvaPose>('stand');
   const [currentWeapon, setCurrentWeapon] = useState<EvaWeapon>('none');
   const [currentEnv, setCurrentEnv] = useState<EnvironmentType>('hangar');
-  const [activeCamera, setActiveCamera] = useState<CameraPreset>('full');
+  const [activeCamera, setActiveCamera] = useState<CameraPreset>('carFront');
 
   const [atFieldActive, setAtFieldActive] = useState<boolean>(false);
   const [cableConnected, setCableConnected] = useState<boolean>(true);
@@ -131,7 +134,15 @@ export default function App() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
-      if (e.key === 'b' || e.key === 'B') {
+      if (e.key === 'm' || e.key === 'M') {
+        handleToggleDisplayMode();
+      } else if (e.key === 'o' || e.key === 'O') {
+        handleToggleCarDoors();
+      } else if (e.key === 'e' || e.key === 'E') {
+        handleCarRevEngine();
+      } else if (e.key === 'n' || e.key === 'N') {
+        handleToggleCarNitro();
+      } else if (e.key === 'b' || e.key === 'B') {
         const next = currentUnit === 'berserk' ? 'unit-01' : 'berserk';
         handleSelectUnit(next);
       } else if (e.key === 'd' || e.key === 'D') {
@@ -162,9 +173,45 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentUnit, atFieldActive, cableConnected, laserScanActive, tacticalGridActive, showVideoRef]);
+  }, [currentUnit, displayMode, carDoorsOpen, carNitroActive, atFieldActive, cableConnected, laserScanActive, tacticalGridActive, showVideoRef]);
 
   // Model & State Handlers
+  const handleToggleDisplayMode = () => {
+    setDisplayMode((prev: DisplayMode) => {
+      const next: DisplayMode = prev === 'car' ? 'mecha' : 'car';
+      controllerRef.current?.setDisplayMode(next);
+      setActiveCamera(next === 'car' ? 'carFront' : 'full');
+      return next;
+    });
+  };
+
+  const handleToggleCarDoors = () => {
+    setCarDoorsOpen((prev) => {
+      const next = !prev;
+      controllerRef.current?.setCarDoors(next);
+      return next;
+    });
+  };
+
+  const handleCarRevEngine = () => {
+    evaAudio.playEngineRev();
+    controllerRef.current?.triggerDamageShake(0.25);
+  };
+
+  const handleToggleCarNitro = () => {
+    setCarNitroActive((prev) => {
+      const next = !prev;
+      controllerRef.current?.setCarNitro(next);
+      if (next) {
+        evaAudio.playEngineRev();
+        evaAudio.playTurboBlowOff();
+      } else {
+        evaAudio.playTurboBlowOff();
+      }
+      return next;
+    });
+  };
+
   const handleApplyVideoPreset = () => {
     handleSelectUnit('space-01');
     handleSelectWeapon('spear');
@@ -267,6 +314,8 @@ export default function App() {
       {/* Top Tactical Header */}
       <NervHeader
         currentUnit={currentUnit}
+        displayMode={displayMode}
+        onToggleDisplayMode={handleToggleDisplayMode}
         onCameraSelect={handleCameraSelect}
         activeCamera={activeCamera}
         isMuted={isMuted}
@@ -287,25 +336,23 @@ export default function App() {
 
       {/* Keyboard Shortcut Helper Tag (discreet bottom-left) */}
       <div className="fixed bottom-3 left-4 z-10 pointer-events-none hidden lg:flex items-center space-x-2 text-[10px] font-mono text-[#4a5568]">
-        <span>단축키: [1/2/0] 기체</span>
+        <span className="text-[#00ff66] font-bold">[M] 스포츠카/로봇</span>
         <span>·</span>
-        <span>[V] 영상 레퍼런스</span>
+        <span>[O] 시저도어</span>
         <span>·</span>
-        <span>[D] 피격 피해</span>
+        <span>[E] V12가속</span>
         <span>·</span>
-        <span>[L] 레이저 스캔</span>
+        <span>[N] 니트로</span>
         <span>·</span>
-        <span>[G] 전술 격자</span>
+        <span>[1/2/0] 컬러도색</span>
+        <span>·</span>
+        <span>[L] 레이저스캔</span>
+        <span>·</span>
+        <span>[G] 전술격자</span>
         <span>·</span>
         <span>[B] 폭주</span>
         <span>·</span>
-        <span>[A] AT필드</span>
-        <span>·</span>
-        <span>[C] 전원선</span>
-        <span>·</span>
-        <span>[P] 유압/공압</span>
-        <span>·</span>
-        <span>[스페이스바] 전투</span>
+        <span>[V] 영상</span>
         <span>·</span>
         <span>마우스 드래그: 360° 회전</span>
       </div>
@@ -321,6 +368,13 @@ export default function App() {
       <NervDock
         currentUnit={currentUnit}
         onSelectUnit={handleSelectUnit}
+        displayMode={displayMode}
+        onToggleDisplayMode={handleToggleDisplayMode}
+        carDoorsOpen={carDoorsOpen}
+        onToggleCarDoors={handleToggleCarDoors}
+        onCarRevEngine={handleCarRevEngine}
+        carNitroActive={carNitroActive}
+        onToggleCarNitro={handleToggleCarNitro}
         currentPose={currentPose}
         onSelectPose={handleSelectPose}
         currentWeapon={currentWeapon}
